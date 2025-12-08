@@ -420,22 +420,49 @@ void compileStatement(void) {
   }
 }
 
+// void compileLValue(void) {
+//   Object* var;
+
+//   eat(TK_IDENT);
+//   // check if the identifier is a function identifier, or a variable identifier, or a parameter  
+//   var = checkDeclaredLValueIdent(currentToken->string);
+//   switch (var->kind)
+//   case OBJ_VARIABLE:
+//     compileIndexes();
+//   case OBJ_PARAMETER:
+//     break;
+//   case OBJ_FUNCTION:
+//      //TODO
+   
+// default: 
+//     error(ERR_INVALID_LVALUE,currentToken->lineNo, currentToken->colNo);
+// }
+
 void compileLValue(void) {
   Object* var;
 
   eat(TK_IDENT);
-  // check if the identifier is a function identifier, or a variable identifier, or a parameter  
   var = checkDeclaredLValueIdent(currentToken->string);
-  switch (var->kind)
-  case OBJ_VARIABLE
-    compileIndexes();
+
+  switch (var->kind) { 
+  case OBJ_VARIABLE:   
+  
+    if (var->varAttrs->type->typeClass == TP_ARRAY) {
+        compileIndexes();
+    }
+    break; 
+
   case OBJ_PARAMETER:
+ 
     break;
+
   case OBJ_FUNCTION:
-     //TODO
    
-default: 
-    error(ERR_INVALID_LVALUE,currentToken->lineNo, currentToken->colNo);
+    break;
+
+  default:
+    error(ERR_INVALID_LVALUE, currentToken->lineNo, currentToken->colNo);
+  } 
 }
 
 void compileAssignSt(void) {

@@ -33,7 +33,17 @@ void checkFreshIdent(char *name) {
 }
 Object* checkDeclaredIdent(char* name) {
   // TODO
-  
+  // Object* obj = lookupObject(name);
+  // if (obj == NULL)
+  //   error(ERR_UNDECLARED_IDENT,currentToken->lineNo, currentToken->colNo);
+  // if (obj->kind != OBJ_CONSTANT && obj->kind != OBJ_TYPE && obj->kind != OBJ_VARIABLE && obj->kind != OBJ_FUNCTION && obj->kind != OBJ_PROCEDURE)
+  //   error(ERR_INVALID_IDENT,currentToken->lineNo, currentToken->colNo);
+  // return obj;
+  Object* obj = lookupObject(name);
+  if (obj == NULL) {
+    error(ERR_UNDECLARED_IDENT, currentToken->lineNo, currentToken->colNo);
+  }
+  return obj;
 }
 
 Object* checkDeclaredConstant(char* name) {
@@ -57,13 +67,57 @@ Object* checkDeclaredType(char* name) {
 }
 Object* checkDeclaredVariable(char* name) {
   // TODO
+  Object* obj = lookupObject(name);
+  if (obj == NULL)
+    error(ERR_UNDECLARED_VARIABLE,currentToken->lineNo, currentToken->colNo);
+  if (obj->kind != OBJ_VARIABLE)
+    error(ERR_INVALID_VARIABLE,currentToken->lineNo, currentToken->colNo);
+  return obj;
 }
 
 Object* checkDeclaredProcedure(char* name) {
   // TODO
+  Object* obj = lookupObject(name);
+  if (obj == NULL)  
+    error(ERR_UNDECLARED_PROCEDURE,currentToken->lineNo, currentToken->colNo);
+  if (obj->kind != OBJ_PROCEDURE)
+    error(ERR_INVALID_PROCEDURE,currentToken->lineNo, currentToken->colNo);
+  return obj;
 }
 
 Object* checkDeclaredLValueIdent(char* name) {
   // TODO
+  // Object* obj = lookupObject(name);
+  // if (obj == NULL)
+  //   error(ERR_UNDECLARED_IDENT, currentToken->lineNo, currentToken->colNo);
+
+  // switch (obj->kind) {
+  // case OBJ_VARIABLE:
+  // case OBJ_PARAMETER:
+  //   break;
+  // case OBJ_FUNCTION:
+  //   if (obj != symtab->currentScope->owner) 
+  //     error(ERR_INVALID_IDENT, currentToken->lineNo, currentToken->colNo);
+  //   break;
+  // default:
+  //   error(ERR_INVALID_LVALUE, currentToken->lineNo, currentToken->colNo);
+  // }
+  // return obj;
+  Object* obj = lookupObject(name);
+  if (obj == NULL)
+    error(ERR_UNDECLARED_IDENT, currentToken->lineNo, currentToken->colNo);
+
+  switch (obj->kind) {
+  case OBJ_VARIABLE:
+  case OBJ_PARAMETER:
+    break;
+  case OBJ_FUNCTION:
+    if (obj != symtab->currentScope->owner) 
+      error(ERR_INVALID_IDENT, currentToken->lineNo, currentToken->colNo);
+    break;
+  default:
+    error(ERR_INVALID_LVALUE, currentToken->lineNo, currentToken->colNo);
+  }
+  return obj;
 }
 

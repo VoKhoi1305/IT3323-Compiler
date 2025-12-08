@@ -4,7 +4,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdlib.h>
-#include <conio.h>
 #include <ctype.h>
 #include <string.h>
 #include <limits.h>
@@ -103,28 +102,49 @@ Token* getToken(void)
 		return getToken();
 	case 3:
 	{
+		// ln = lineNo;
+		// cn = colNo;
+		// int count = 1;
+		// str[0] = (char)currentChar;
+		// readChar();
+		// while ((currentChar != EOF) &&
+		// 	((charCodes[currentChar] == CHAR_LETTER) || (charCodes[currentChar] == CHAR_DIGIT)))
+		// {
+		// 	if (count <= MAX_IDENT_LEN)
+		// 	{
+		// 		str[count++] = (char)currentChar;
+		// 	}
+		// 	readChar();
+		// }
+		// if (count > MAX_IDENT_LEN)
+		// {
+		// 	error(ERR_IDENT_TOO_LONG, ln, cn);
+		// 	return makeToken(TK_NONE, ln, cn);
+		// }
+		// str[count] = '\0';
+		// state = 4;
+		// return getToken();
 		ln = lineNo;
-		cn = colNo;
-		int count = 1;
-		str[0] = (char)currentChar;
-		readChar();
-		while ((currentChar != EOF) &&
-			((charCodes[currentChar] == CHAR_LETTER) || (charCodes[currentChar] == CHAR_DIGIT)))
-		{
-			if (count <= MAX_IDENT_LEN)
-			{
-				str[count++] = (char)currentChar;
-			}
-			readChar();
-		}
-		if (count > MAX_IDENT_LEN)
-		{
-			error(ERR_IDENTTOOLONG, ln, cn);
-			return makeToken(TK_NONE, ln, cn);
-		}
-		str[count] = '\0';
-		state = 4;
-		return getToken();
+      cn = colNo;
+      int count = 0;
+      while (currentChar != EOF && 
+            (charCodes[currentChar] == CHAR_LETTER || 
+             charCodes[currentChar] == CHAR_DIGIT)) {
+        if (count < MAX_IDENT_LEN) {
+            // SỬA: Chuyển ký tự thành chữ hoa ngay khi đọc
+            str[count++] = (char)toupper(currentChar);
+        }
+        readChar();
+      }
+      str[count] = '\0'; // Kết thúc chuỗi quan trọng
+      
+      if (count > MAX_IDENT_LEN) {
+        error(ERR_IDENT_TOO_LONG, ln, cn);
+        return makeToken(TK_NONE, ln, cn);
+      }
+
+      state = 4;
+      return getToken();
 	}
 	case 4:
 		token->tokenType = checkKeyword(str);
@@ -156,7 +176,7 @@ Token* getToken(void)
 					index++;
 					readChar();
 				}
-				error(ERR_NUMBERTOOLONG, ln, cn);
+				error(ERR_IDENT_TOO_LONG, ln, cn);
 				return token;
 				break;
 			}
@@ -180,7 +200,7 @@ Token* getToken(void)
 		sprintf(strNumber, "%d", INT_MAX);
 		if (strlen(string) == strlen(strNumber) && strcmp(string, strNumber) > 0)
 		{
-			error(ERR_NUMBERTOOLONG, ln, cn);
+			error(ERR_NUMBER_TOO_LONG, ln, cn);
 			return token;
 		}
 		token->tokenType = TK_NUMBER;
@@ -246,7 +266,7 @@ Token* getToken(void)
 		return makeToken(SB_NEQ, lineNo, colNo - 1);
 	case 22:
 		token = makeToken(TK_NONE, lineNo, colNo - 1);
-		error(ERR_INVALIDSYMBOL, token->lineNo, token->colNo);
+		error(ERR_INVALID_SYMBOL, token->lineNo, token->colNo);
 		return token;
 	case 23:
 		readChar();
@@ -318,7 +338,7 @@ Token* getToken(void)
 		state = 0;
 		return token;
 	case 34:
-		error(ERR_INVALIDCHARCONSTANT, lineNo, colNo - 2);
+		error(ERR_INVALID_CONSTANT, lineNo, colNo - 2);
 	case 35:
 		ln = lineNo;
 		cn = colNo;
@@ -368,7 +388,7 @@ Token* getToken(void)
 		readChar();
 		return getToken();
 	case 40:
-		error(ERR_ENDOFCOMMENT, lineNo, colNo);
+		error(ERR_END_OF_COMMENT, lineNo, colNo);
 	case 41:
 		state = 0;
 		return makeToken(SB_LPAR, ln, cn);
@@ -386,13 +406,25 @@ Token* getToken(void)
 		return makeToken(SB_RPAR, lineNo, colNo - 1);
 	case 43:
 		token = makeToken(TK_NONE, lineNo, colNo);
-		error(ERR_INVALIDSYMBOL, lineNo, colNo);
+		error(ERR_INVALID_SYMBOL, lineNo, colNo);
 		readChar();
 		state = 0;
 		return token;
 	}
 }
 
+Token* getValidToken(void) {
+
+  state=0;
+  Token *token = getToken();
+  
+  while (token->tokenType == TK_NONE) {
+    free(token);
+	state = 0;
+    token = getToken();
+  }
+  return token;
+}
 
 
 /******************************************************************/

@@ -35,6 +35,11 @@ Type* makeCharType(void) {
 
 Type* makeArrayType(int arraySize, Type* elementType) {
   //TODO
+  Type* type = (Type*) malloc(sizeof(Type));
+  type->typeClass = TP_ARRAY;
+  type->arraySize = arraySize;
+  type->elementType = elementType;  
+  return type;
 }
 
 Type* duplicateType(Type* type) {
@@ -88,6 +93,14 @@ ConstantValue* makeCharConstant(char ch) {
 
 ConstantValue* duplicateConstantValue(ConstantValue* v) {
   //TODO
+  ConstantValue* value = (ConstantValue*) malloc(sizeof(ConstantValue));
+  value->type = v->type;
+  if (v->type == TP_INT) {
+    value->intValue = v->intValue;
+  } else if (v->type == TP_CHAR) {
+    value->charValue = v->charValue;
+  }
+  return value;
 }
 
 /******************* Object utilities ******************************/
@@ -121,6 +134,12 @@ Object* createConstantObject(char *name) {
 
 Object* createTypeObject(char *name) {
   //TODO
+  Object* obj = (Object*) malloc(sizeof(Object));
+  strcpy(obj->name, name);
+  obj->kind = OBJ_TYPE;
+  obj->typeAttrs = (TypeAttributes*) malloc(sizeof(TypeAttributes));
+  obj->typeAttrs->actualType = NULL;
+  return obj;
 }
 
 Object* createVariableObject(char *name) {
@@ -144,10 +163,28 @@ Object* createFunctionObject(char *name) {
 
 Object* createProcedureObject(char *name) {
   //TODO
+  Object* obj = (Object*) malloc(sizeof(Object));
+  strcpy(obj->name, name);
+  obj->kind = OBJ_PROCEDURE;
+  obj->procAttrs = (ProcedureAttributes*) malloc(sizeof(ProcedureAttributes));
+  obj->procAttrs->paramList = NULL;
+  obj->procAttrs->scope = createScope(obj, symtab->currentScope);
+  return obj;
 }
 
 Object* createParameterObject(char *name, enum ParamKind kind, Object* owner) {
   //TODO
+  Object* obj = (Object*) malloc(sizeof(Object));
+  strcpy(obj->name, name);
+  obj->kind = OBJ_PARAMETER;
+  obj->paramAttrs = (ParameterAttributes*) malloc(sizeof(ParameterAttributes));
+  obj->paramAttrs->kind = kind;
+  if (owner->kind == OBJ_FUNCTION) {
+    obj->paramAttrs->function = owner;
+  } else if (owner->kind == OBJ_PROCEDURE) {
+    obj->paramAttrs->function = owner; 
+  }
+  return obj;
 }
 
 void freeObject(Object* obj) {
