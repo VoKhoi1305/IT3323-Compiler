@@ -822,7 +822,7 @@ Token* getToken(void)
 
 		}
 		state = 0;
-		return makeToken(SB_RPAR, lineNo, colNo - 1);
+		return makeToken(SB_RPAR, lineNo, colNo - 3);
 	case 43:
 		token = makeToken(TK_NONE, lineNo, colNo);
 		error(ERR_INVALID_SYMBOL, lineNo, colNo);

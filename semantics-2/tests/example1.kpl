@@ -1,3 +1,8 @@
-PROGRAM EXAMPLE1; (* EXAMPLE 1 *)
-BEGIN
-END. (* EXAMPLE 1 *)
+Program Example10;
+  Function Add(x : Integer; y : Integer): Integer;
+  Begin
+     Add := x + y;
+  End;
+Begin
+  Call WriteI(Add(10));
+End.
