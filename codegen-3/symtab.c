@@ -81,17 +81,16 @@ void freeType(Type* type) {
 }
 
 int sizeOfType(Type* type) {
-  // TODO
   switch (type->typeClass) {
   case TP_INT:
-    return 1;
+    return INT_SIZE;
   case TP_CHAR:
-    return 1;
+    return CHAR_SIZE;
   case TP_ARRAY:
-    return type->arraySize * sizeOfType(type->elementType);
+    return (type->arraySize * sizeOfType(type->elementType));
   }
   return 0;
-}    
+}
 
 /******************* Constant utility ******************************/
 
@@ -350,10 +349,9 @@ void exitBlock(void) {
 }
 
 void declareObject(Object* obj) {
-  // TODO: rewrite the function to fill all values of attributes
   Object* owner;
 
-  if (symtab->currentScope == NULL)  
+  if (symtab->currentScope == NULL)  //  globalObject
     addObject(&(symtab->globalObjectList), obj);
   else {
     switch (obj->kind) {
@@ -390,6 +388,7 @@ void declareObject(Object* obj) {
     }
     addObject(&(symtab->currentScope->objList), obj);
   }
+  
 }
 
 
