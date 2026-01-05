@@ -2348,6 +2348,16 @@ Type* compileLValue(void) {
 
 void compileAssignSt(void) {
   // TODO
+  Type* varType;
+  Type* expType;
+
+  varType = compileLValue();
+  
+  eat(SB_ASSIGN);
+  expType = compileExpression();
+  checkTypeEquality(varType, expType);
+  
+  genST();
 }
 
 void compileCallSt(void) {
@@ -2377,14 +2387,89 @@ void compileGroupSt(void) {
 
 void compileIfSt(void) {
   // TODO
+  eat(KW_IF);
+  compileCondition();
+  eat(KW_THEN);
+  
+  Instruction* jmpFJ = genFJ(DC_VALUE); // Jump False to Else/End
+  
+  compileStatement();
+  
+  if (lookAhead->tokenType == KW_ELSE) {
+    Instruction* jmpJ = genJ(DC_VALUE); // Jump to End (skip Else)
+    updateFJ(jmpFJ, getCurrentCodeAddress()); // Start of Else
+    
+    eat(KW_ELSE);
+    compileStatement();
+    
+    updateJ(jmpJ, getCurrentCodeAddress()); // End of If
+  } else {
+    updateFJ(jmpFJ, getCurrentCodeAddress()); // End of If
+  }
 }
 
 void compileWhileSt(void) {
   // TODO
+   CodeAddress labelLoop = getCurrentCodeAddress();
+  
+  eat(KW_WHILE);
+  compileCondition();
+  
+  Instruction* jmpFJ = genFJ(DC_VALUE); // Exit loop if false
+  
+  eat(KW_DO);
+  compileStatement();
+  
+  genJ(labelLoop); // Jump back to condition
+  updateFJ(jmpFJ, getCurrentCodeAddress());
 }
 
 void compileForSt(void) {
   // TODO
+  // FOR var := expr1 TO expr2 DO statement
+  eat(KW_FOR);
+  
+  // Xử lý biến đếm (LValue)
+  // Ta cần địa chỉ để gán, và giá trị để so sánh/tăng
+  // Vì compileLValue sẽ 'eat' token, ta gọi nó để lấy địa chỉ
+  // Lưu ý: compileLValue sinh mã đẩy địa chỉ lên stack
+  eat(TK_IDENT);
+  Object* var = checkDeclaredLValueIdent(currentToken->string);
+  genVariableAddress(var); 
+
+  eat(SB_ASSIGN);
+  Type* type = compileExpression();
+  checkTypeEquality(var->varAttrs->type, type);
+  
+  genST(); // Khởi tạo: var := expr1
+  
+  CodeAddress labelLoop = getCurrentCodeAddress();
+  
+  eat(KW_TO);
+  
+  // Đẩy giá trị var lên stack để so sánh
+  genVariableValue(var);
+  
+  type = compileExpression(); // expr2 (Limit)
+  checkTypeEquality(var->varAttrs->type, type);
+  
+  genLE(); // var <= limit ?
+  
+  Instruction* jmpFJ = genFJ(DC_VALUE); // Nếu false (var > limit) thì thoát
+  
+  eat(KW_DO);
+  compileStatement();
+  
+  // Tăng biến đếm: var := var + 1
+  genVariableAddress(var);
+  genVariableValue(var);
+  genLC(1);
+  genAD();
+  genST();
+  
+  genJ(labelLoop);
+  
+  updateFJ(jmpFJ, getCurrentCodeAddress());
 }
 
 void compileArgument(Object* param) {
@@ -2451,10 +2536,71 @@ void compileArguments(ObjectNode* paramList) {
 
 void compileCondition(void) {
   // TODO
+  Type* type1;
+  Type* type2;
+  TokenType op;
+
+  type1 = compileExpression();
+  checkBasicType(type1);
+
+  op = lookAhead->tokenType;
+  switch (op) {
+  case SB_EQ:
+    eat(SB_EQ);
+    break;
+  case SB_NEQ:
+    eat(SB_NEQ);
+    break;
+  case SB_LE:
+    eat(SB_LE);
+    break;
+  case SB_LT:
+    eat(SB_LT);
+    break;
+  case SB_GE:
+    eat(SB_GE);
+    break;
+  case SB_GT:
+    eat(SB_GT);
+    break;
+  default:
+    error(ERR_INVALID_COMPARATOR, lookAhead->lineNo, lookAhead->colNo);
+  }
+
+  type2 = compileExpression();
+  checkTypeEquality(type1,type2);
+  
+  switch(op) {
+    case SB_EQ: genEQ(); break;
+    case SB_NEQ: genNE(); break;
+    case SB_LE: genLE(); break;
+    case SB_LT: genLT(); break;
+    case SB_GE: genGE(); break;
+    case SB_GT: genGT(); break;
+    default: break;
+  }
 }
 
 Type* compileExpression(void) {
   // TODO
+   Type* type;
+  
+  switch (lookAhead->tokenType) {
+  case SB_PLUS:
+    eat(SB_PLUS);
+    type = compileExpression2();
+    checkIntType(type);
+    break;
+  case SB_MINUS:
+    eat(SB_MINUS);
+    type = compileExpression2();
+    checkIntType(type);
+    genNEG(); // Unary minus
+    break;
+  default:
+    type = compileExpression2();
+  }
+  return type;
 }
 
 Type* compileExpression2(void) {
@@ -2469,6 +2615,52 @@ Type* compileExpression2(void) {
 
 Type* compileExpression3(Type* argType1) {
   // TODO
+  Type* argType2;
+  Type* resultType;
+
+  switch (lookAhead->tokenType) {
+  case SB_PLUS:
+    eat(SB_PLUS);
+    checkIntType(argType1);
+    argType2 = compileTerm();
+    checkIntType(argType2);
+    
+    genAD();
+
+    resultType = compileExpression3(argType1);
+    break;
+  case SB_MINUS:
+    eat(SB_MINUS);
+    checkIntType(argType1);
+    argType2 = compileTerm();
+    checkIntType(argType2);
+    
+    genSB();
+
+    resultType = compileExpression3(argType1);
+    break;
+    // check the FOLLOW set
+  case KW_TO:
+  case KW_DO:
+  case SB_RPAR:
+  case SB_COMMA:
+  case SB_EQ:
+  case SB_NEQ:
+  case SB_LE:
+  case SB_LT:
+  case SB_GE:
+  case SB_GT:
+  case SB_RSEL:
+  case SB_SEMICOLON:
+  case KW_END:
+  case KW_ELSE:
+  case KW_THEN:
+    resultType = argType1;
+    break;
+  default:
+    error(ERR_INVALID_EXPRESSION, lookAhead->lineNo, lookAhead->colNo);
+  }
+  return resultType;
 }
 
 Type* compileTerm(void) {
@@ -2481,10 +2673,141 @@ Type* compileTerm(void) {
 
 Type* compileTerm2(Type* argType1) {
   // TODO
+   Type* argType2;
+  Type* resultType;
+
+  switch (lookAhead->tokenType) {
+  case SB_TIMES:
+    eat(SB_TIMES);
+    checkIntType(argType1);
+    argType2 = compileFactor();
+    checkIntType(argType2);
+    
+    genML();
+
+    resultType = compileTerm2(argType1);
+    break;
+  case SB_SLASH:
+    eat(SB_SLASH);
+    checkIntType(argType1);
+    argType2 = compileFactor();
+    checkIntType(argType2);
+    
+    genDV();
+
+    resultType = compileTerm2(argType1);
+    break;
+    // check the FOLLOW set
+  case SB_PLUS:
+  case SB_MINUS:
+  case KW_TO:
+  case KW_DO:
+  case SB_RPAR:
+  case SB_COMMA:
+  case SB_EQ:
+  case SB_NEQ:
+  case SB_LE:
+  case SB_LT:
+  case SB_GE:
+  case SB_GT:
+  case SB_RSEL:
+  case SB_SEMICOLON:
+  case KW_END:
+  case KW_ELSE:
+  case KW_THEN:
+    resultType = argType1;
+    break;
+  default:
+    error(ERR_INVALID_TERM, lookAhead->lineNo, lookAhead->colNo);
+  }
+  return resultType;
 }
 
 Type* compileFactor(void) {
   // TODO
+  Type* type;
+  Object* obj;
+
+  switch (lookAhead->tokenType) {
+  case TK_NUMBER:
+    eat(TK_NUMBER);
+    type = intType;
+    genLC(currentToken->intValue);
+    break;
+  case TK_CHAR:
+    eat(TK_CHAR);
+    type = charType;
+    genLC(currentToken->string[0]);
+    break;
+  case TK_IDENT:
+    eat(TK_IDENT);
+    obj = checkDeclaredIdent(currentToken->string);
+
+    switch (obj->kind) {
+    case OBJ_CONSTANT:
+      switch (obj->constAttrs->value->type) {
+      case TP_INT:
+        type = intType;
+        genLC(obj->constAttrs->value->intValue);
+        break;
+      case TP_CHAR:
+        type = charType;
+        genLC(obj->constAttrs->value->charValue);
+        break;
+      default:
+        break;
+      }
+      break;
+    case OBJ_VARIABLE:
+      if (obj->varAttrs->type->typeClass == TP_ARRAY) {
+        genVariableAddress(obj); // Base address
+        type = compileIndexes(obj->varAttrs->type); // Offset calculation
+        genLI(); // Load value from address
+      } else {
+        genVariableValue(obj);
+        type = obj->varAttrs->type;
+      }
+      break;
+    case OBJ_PARAMETER:
+      if (obj->paramAttrs->kind == PARAM_VALUE) {
+          genVariableValue(obj);
+      } else {
+          genVariableValue(obj); // Lấy địa chỉ tham chiếu
+          genLI(); // Lấy giá trị tại địa chỉ đó
+      }
+      type = obj->paramAttrs->type;
+      break;
+    case OBJ_FUNCTION:
+      if (isPredefinedFunction(obj)) {
+        compileArguments(obj->funcAttrs->paramList);
+        genPredefinedFunctionCall(obj);
+      } else {
+        compileArguments(obj->funcAttrs->paramList);
+        int diff = 0;
+        Scope* scope = symtab->currentScope;
+        while (scope != obj->funcAttrs->scope->outer && scope != NULL) {
+            scope = scope->outer;
+            diff++;
+        }
+        genCALL(diff, obj->funcAttrs->codeAddress);
+      }
+      type = obj->funcAttrs->returnType;
+      break;
+    default: 
+      error(ERR_INVALID_FACTOR,currentToken->lineNo, currentToken->colNo);
+      break;
+    }
+    break;
+  case SB_LPAR:
+    eat(SB_LPAR);
+    type = compileExpression();
+    eat(SB_RPAR);
+    break;
+  default:
+    error(ERR_INVALID_FACTOR, lookAhead->lineNo, lookAhead->colNo);
+  }
+  
+  return type;
 }
 
 Type* compileIndexes(Type* arrayType) {
@@ -2528,6 +2851,14 @@ int compile() {
 
 int main(int argc, char *argv[]) {
   int i; 
+  if (argc <= 1) {
+    printf("Usage: %s <source-file>\n", argv[0]);
+    return IO_ERROR;
+  }
+  if (freopen(argv[1], "r", stdin) == NULL) {
+    printf("Cannot open file %s\n", argv[1]);
+    return 0;
+  }
 
   initCodeBuffer();
   compile();
