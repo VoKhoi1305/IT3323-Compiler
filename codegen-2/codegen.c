@@ -21,10 +21,24 @@ CodeBlock* codeBlock;
 
 void genVariableAddress(Object* var) {
   // TODO
+  int diff = 0;
+  Scope* scope = symtab->currentScope;
+  while (scope != var->varAttrs->scope && scope != NULL) {
+    scope = scope->outer;
+    diff++;
+  }
+  genLA(diff, var->varAttrs->localOffset);
 }
 
 void genVariableValue(Object* var) {
   // TODO
+  int diff = 0;
+  Scope* scope = symtab->currentScope;
+  while (scope != var->varAttrs->scope && scope != NULL) {
+    scope = scope->outer;
+    diff++;
+  }
+  genLV(diff, var->varAttrs->localOffset);
 }
 
 int isPredefinedFunction(Object* func) {
