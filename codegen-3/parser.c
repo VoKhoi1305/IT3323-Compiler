@@ -422,10 +422,16 @@ Type* compileLValue(void) {
   case OBJ_PARAMETER:
     // TODO: push parameter value onto stack if the parameter is a reference (defined with keyword VAR
     //       push parameter address onto stack if the parameter is a value
+    if (var->paramAttrs->kind == PARAM_VALUE) {
+      genParameterAddress(var);
+    } else {
+      genParameterValue(var);
+    } 
     varType = var->paramAttrs->type;
     break;
   case OBJ_FUNCTION:
     // TODO: push the return value address onto the stack
+    genReturnValueAddress(var);
     varType = var->funcAttrs->returnType;
     break;
   default: 
@@ -450,6 +456,7 @@ void compileAssignSt(void) {
 
 void compileCallSt(void) {
   // TODO: generate call-statement
+    
   Object* proc;
 
   eat(KW_CALL);
@@ -859,6 +866,10 @@ Type* compileFactor(void) {
     case OBJ_PARAMETER:
       // TODO: push parameter's value onto the stack
       type = obj->paramAttrs->type;
+      genParameterValue(obj);
+      if(obj->paramAttrs->kind == PARAM_REFERENCE) {
+        genLI();
+      }
       break;
     case OBJ_FUNCTION:
       // TODO: generate function call
@@ -866,7 +877,10 @@ Type* compileFactor(void) {
 	compileArguments(obj->funcAttrs->paramList);
 	genPredefinedFunctionCall(obj);
       } else {
-	compileArguments(obj->funcAttrs->paramList);
+	      genINT(4);
+        compileArguments(obj->funcAttrs->paramList);
+        genDCT(4 + obj->funcAttrs->paramCount);
+        genFunctionCall(obj);
       }
       type = obj->funcAttrs->returnType;
       break;
@@ -897,6 +911,10 @@ Type* compileIndexes(Type* arrayType) {
     type = compileExpression();
     checkIntType(type);
     checkArrayType(arrayType);
+
+    genLC(sizeOfType(arrayType->elementType));
+    genML();
+    genAD();
 
     arrayType = arrayType->elementType;
     eat(SB_RSEL);
