@@ -469,7 +469,10 @@ void compileCallSt(void) {
     compileArguments(proc->procAttrs->paramList);
     genPredefinedProcedureCall(proc);
   } else {
+    genINT(4);
     compileArguments(proc->procAttrs->paramList);
+    genDCT(4 + proc->procAttrs->paramCount);
+    genProcedureCall(proc);
   }
 }
 
